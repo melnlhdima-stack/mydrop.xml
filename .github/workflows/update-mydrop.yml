@@ -24,7 +24,7 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
 
     steps:
-      - name: Checkout
+      - name: Checkout repository
         uses: actions/checkout@v4
 
       - name: Set up Python
@@ -35,10 +35,10 @@ jobs:
       - name: Install XML parser
         run: python -m pip install lxml
 
-      - name: Generate MyDrop feed
+      - name: Generate SEO XML feed
         env:
           MYDROP_FEED_URL: ${{ secrets.MYDROP_FEED_URL }}
-        run: python build_mydrop_github_fixed.py
+        run: python build_mydrop_github_SEO_v3.py
 
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
@@ -46,9 +46,8 @@ jobs:
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: public
+          path: ./public
 
-      - name: Deploy GitHub Pages
+      - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
-
