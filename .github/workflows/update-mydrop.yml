@@ -1,0 +1,44 @@
+name: Update MyDrop XML
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '23 */4 * * *'
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: mydrop-pages
+  cancel-in-progress: false
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install XML parser
+        run: python -m pip install lxml
+      - name: Generate MyDrop feed
+        env:
+          MYDROP_FEED_URL: ${{ secrets.MYDROP_FEED_URL }}
+        run: python build_mydrop_github.py
+      - name: Configure Pages
+        uses: actions/configure-pages@v5
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: public
+      - name: Deploy Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
