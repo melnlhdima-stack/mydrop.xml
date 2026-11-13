@@ -38,7 +38,7 @@ jobs:
       - name: Generate SEO XML feed
         env:
           MYDROP_FEED_URL: ${{ secrets.MYDROP_FEED_URL }}
-        run: python build_mydrop_github_SEO_v4.py
+       run: python build_mydrop_github_SEO_v5.py
 
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
