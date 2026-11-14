@@ -39,7 +39,9 @@ jobs:
         env:
           MYDROP_FEED_URL: ${{ secrets.MYDROP_FEED_URL }}
         run: python build_mydrop_github_SEO_v9.py
-
+      - name: Improve SEO in XML
+        run: python improve_mydrop_seo.py public/mydrop.xml
+        
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
 
