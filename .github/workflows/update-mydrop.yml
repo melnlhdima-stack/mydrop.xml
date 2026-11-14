@@ -35,13 +35,108 @@ jobs:
       - name: Install XML parser
         run: python -m pip install lxml
 
-      - name: Generate SEO XML feed
+      - name: Generate MyDrop XML
         env:
           MYDROP_FEED_URL: ${{ secrets.MYDROP_FEED_URL }}
         run: python build_mydrop_github_SEO_v9.py
 
-      - name: Improve SEO V15 in XML
+      - name: Improve SEO V15
         run: python improve_mydrop_seo_v15.py public/mydrop.xml
+
+      - name: Fix Prom variant attributes
+        shell: bash
+        run: |
+          python - <<'PY'
+          from collections import defaultdict
+          from pathlib import Path
+          from lxml import etree
+          import os
+
+          path = Path("public/mydrop.xml")
+          parser = etree.XMLParser(
+              resolve_entities=False,
+              no_network=True
+          )
+          tree = etree.parse(str(path), parser)
+          offers = tree.findall(".//offer")
+
+          groups = defaultdict(list)
+          for offer in offers:
+              gid = offer.get("group_id")
+              if gid:
+                  groups[gid].append(offer)
+
+          state_names = {"стан", "состояние"}
+          fixed = []
+
+          def state_params(offer):
+              return [
+                  p for p in offer.findall("param")
+                  if (p.get("name") or "")
+                  .strip().casefold() in state_names
+              ]
+
+          for gid, members in groups.items():
+              marked = [
+                  offer for offer in members
+                  if state_params(offer)
+              ]
+
+              if not marked or len(marked) == len(members):
+                  continue
+
+              for offer in marked:
+                  text = " ".join(
+                      (offer.findtext(key) or "")
+                      for key in (
+                          "name",
+                          "name_ua",
+                          "description",
+                          "description_ua",
+                      )
+                  ).casefold()
+
+                  if "нюанс" not in text:
+                      raise ValueError(
+                          "State disclosure missing for "
+                          + str(offer.get("id"))
+                      )
+
+                  for param in state_params(offer):
+                      offer.remove(param)
+
+                  fixed.append(offer.get("id"))
+
+          for gid, members in groups.items():
+              flags = [
+                  bool(state_params(offer))
+                  for offer in members
+              ]
+              if len(set(flags)) > 1:
+                  raise ValueError(
+                      "Inconsistent state in group " + gid
+                  )
+
+          tmp = path.with_name("mydrop.xml.tmp")
+          try:
+              tree.write(
+                  str(tmp),
+                  encoding="UTF-8",
+                  xml_declaration=True,
+                  pretty_print=True,
+              )
+              etree.parse(str(tmp), parser)
+              os.replace(tmp, path)
+          finally:
+              if tmp.exists():
+                  tmp.unlink()
+
+          print("Total offers:", len(offers))
+          print("Variant groups:", len(groups))
+          print("Fixed offers:", len(fixed))
+          print("Fixed IDs:", ", ".join(fixed))
+          print("Prom XML validation completed")
+          PY
 
       - name: Configure GitHub Pages
         uses: actions/configure-pages@v5
